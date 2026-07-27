@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- 4x4 pixel palette -->
+    <path android:fillColor="#FF6B6B" android:pathData="M22,22h16v16h-16z M22,42h16v16h-16z"/>
+    <path android:fillColor="#FFD93D" android:pathData="M42,22h16v16h-16z M42,70h16v16h-16z"/>
+    <path android:fillColor="#6BCB77" android:pathData="M62,22h16v16h-16z M70,42h16v16h-16z M70,70h16v16h-16z"/>
+    <path android:fillColor="#4D96FF" android:pathData="M22,70h16v16h-16z M42,42h16v16h-16z"/>
+    <path android:fillColor="#FF922B" android:pathData="M22,42h16v16h-16z"/>
+    <path android:fillColor="#845EF7" android:pathData="M62,42h16v16h-16z"/>
+    <path android:fillColor="#E94560" android:pathData="M42,22h16v16h-16z"/>
+    <path android:fillColor="#20C997" android:pathData="M62,70h16v16h-16z"/>
+    <!-- Small white outline between cells -->
+    <path android:fillColor="#2D2D3F" android:pathData="M20,20h68v2h-68z M20,38h68v2h-68z M20,56h68v2h-68z M20,74h68v2h-68z M20,20h2v56h-2z M38,20h2v56h-2z M56,20h2v56h-2z M74,20h2v56h-2z"/>
+</vector>

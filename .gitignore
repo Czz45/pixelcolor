@@ -1,0 +1,35 @@
+# ===== Built application / Gradle artifacts =====
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+build/
+.gradle/
+.kotlin/
+
+# ===== Signing keys & local SDK path (DO NOT COMMIT) =====
+local.properties
+*.jks
+*.keystore
+endgame.jks
+
+# ===== IDE / OS =====
+.idea/
+*.iml
+*.iws
+.DS_Store
+Thumbs.db
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ===== Mimocode tooling cache (keep config, drop node_modules) =====
+.mimocode/node_modules/
+.mimocode/.cron-lock
+.workbuddy/
