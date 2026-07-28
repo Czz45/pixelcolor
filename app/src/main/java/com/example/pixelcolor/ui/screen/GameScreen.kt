@@ -171,79 +171,18 @@ fun GameScreen(navController: NavController, saveId: String) {
             .background(theme.bg)
     ) {
         if (isLoading) {
-            // 加载阶段复用与正式画布一致的布局（顶栏 + 画布区），让预览图以与真实画布相同的
-            // 居中比例呈现，并随根容器的「从缩略图放大」变换一起缩放——避免「预览铺满全屏、游戏却
-            // 带顶栏且居中」的突兀跳变，过渡无缝。
-            Column(Modifier.fillMaxSize().background(theme.bg)) {
-                FrostedGlassBox(
-                    modifier = Modifier.fillMaxWidth().zIndex(1f).statusBarsPadding().padding(horizontal = 4.dp, vertical = 2.dp),
-                    tintColor = theme.bg, blurRadius = 12.dp, alpha = 0.8f
-                ) {
-                    IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.CenterStart).size(36.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = theme.gold, modifier = Modifier.size(22.dp))
-                    }
-                    Text("填色中…", color = theme.gold, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.align(Alignment.Center))
-                }
-                Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.Center) {
-                    if (launchPreview != null) {
-                        Image(
-                            bitmap = launchPreview.asImageBitmap(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        CircularProgressIndicator(color = theme.accent)
-                    }
-                }
-            }
+            // 加载阶段复用与正式画布完全一致布局（同一 GameTopBar + 同尺寸画布区），
+            // 预览图用 ContentScale.Fit 在画布区居中，落点 = 真实画布里画作的位置。
+            LoadingPreviewContent(navController, launchPreview, true)
         } else {
             val state = gameState
             if (state != null) {
                 val currentState = state
+                val tMin = displayTimeMs / 60000
+                val tSec = (displayTimeMs / 1000) % 60
+                val timeText = if (tMin > 0) "${tMin}m${tSec}s" else "${tSec}s"
                 Column(Modifier.fillMaxSize().background(theme.bg)) {
-                    // Minimalist top bar — higher zIndex so canvas can't paint over it
-                    FrostedGlassBox(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .zIndex(1f)
-                            .statusBarsPadding()
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
-                        tintColor = theme.bg,
-                        blurRadius = 12.dp,
-                        alpha = 0.8f
-                    ) {
-                        // Back button
-                        IconButton(
-                            onClick = { navController.popBackStack() },
-                            modifier = Modifier.align(Alignment.CenterStart).size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack, "返回",
-                                tint = theme.gold,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        // Progress text
-                        Text(
-                            "${"%.4f".format(currentState.progress * 100)}%",
-                            color = theme.gold,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                        // Time display — right side
-                        val tMin = displayTimeMs / 60000
-                        val tSec = (displayTimeMs / 1000) % 60
-                        Text(
-                            if (tMin > 0) "${tMin}m${tSec}s" else "${tSec}s",
-                            color = theme.muted,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)
-                        )
-                    }
+                    GameTopBar(navController, "${"%.4f".format(currentState.progress * 100)}%", timeText, true)
 
                     // Canvas area (takes all remaining space)
                     Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
@@ -404,6 +343,60 @@ fun GameScreen(navController: NavController, saveId: String) {
                 }
 
                 // Completed works stay on GameScreen for viewing
+            }
+        }
+        // 跨淡出遮罩：用与加载完全相同的布局盖在真实画布之上，进入画布后淡出 ~280ms，
+        // 遮住画布位图异步生成期间的空白/闪跳；其预览落点与真实画作完全一致。
+        if (launchPreview != null && !isLoading) {
+            var overlayAlpha by remember { mutableFloatStateOf(1f) }
+            LaunchedEffect(Unit) {
+                val a = androidx.compose.animation.core.Animatable(1f)
+                a.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
+                overlayAlpha = a.value
+            }
+            if (overlayAlpha > 0.001f) {
+                Box(Modifier.fillMaxSize().zIndex(20f).graphicsLayer { alpha = overlayAlpha }) {
+                    LoadingPreviewContent(navController, launchPreview, false)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameTopBar(
+    navController: NavController,
+    progressText: String,
+    timeText: String,
+    interactive: Boolean
+) {
+    val theme = LocalAppTheme.current
+    FrostedGlassBox(
+        modifier = Modifier.fillMaxWidth().zIndex(1f).statusBarsPadding().padding(horizontal = 4.dp, vertical = 2.dp),
+        tintColor = theme.bg, blurRadius = 12.dp, alpha = 0.8f
+    ) {
+        if (interactive) {
+            IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.CenterStart).size(36.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = theme.gold, modifier = Modifier.size(22.dp))
+            }
+        } else {
+            Box(Modifier.align(Alignment.CenterStart).size(36.dp))
+        }
+        Text(progressText, color = theme.gold, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.align(Alignment.Center))
+        Text(timeText, color = theme.muted, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
+    }
+}
+
+@Composable
+private fun LoadingPreviewContent(navController: NavController, launchPreview: android.graphics.Bitmap?, interactive: Boolean) {
+    val theme = LocalAppTheme.current
+    Column(Modifier.fillMaxSize().background(theme.bg)) {
+        GameTopBar(navController, "填色中…", "", interactive)
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.Center) {
+            if (launchPreview != null) {
+                Image(bitmap = launchPreview.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            } else {
+                CircularProgressIndicator(color = theme.accent)
             }
         }
     }
