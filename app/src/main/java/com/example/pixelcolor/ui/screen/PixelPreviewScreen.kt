@@ -21,6 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +35,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -75,6 +79,10 @@ fun PixelPreviewScreen(navController: NavController, imageUri: String) {
     val scope = rememberCoroutineScope()
     val theme = LocalAppTheme.current
     val rawUri = remember(imageUri) { Uri.decode(imageUri) }
+
+    // 「启动应用」式入场动画：内容从略小放大并淡入到全屏
+    val enter = remember { Animatable(0.9f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
 
     // Crop state (fractions 0..1)
     var cropX by remember { mutableFloatStateOf(0f) }
@@ -280,7 +288,7 @@ fun PixelPreviewScreen(navController: NavController, imageUri: String) {
 
     LaunchedEffect(rawUri) { loadBitmap() }
 
-    Column(Modifier.fillMaxSize().background(theme.bg).systemBarsPadding()) {
+    Column(Modifier.graphicsLayer { scaleX = enter.value; scaleY = enter.value; alpha = ((enter.value - 0.9f) / 0.1f).coerceIn(0f, 1f) }.fillMaxSize().background(theme.bg).systemBarsPadding()) {
         if (showCrop && originalBitmap != null) {
             // Crop page
             Box(Modifier.fillMaxSize().background(theme.bg)) {

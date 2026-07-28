@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.graphicsLayer
@@ -87,7 +88,7 @@ fun AddImageDialog(
 
     // 「启动应用」式动画：进�? 0=缩在按钮处，1=居中铺开
     var mounted by remember { mutableStateOf(show) }
-    var overlayRect by remember { mutableStateOf<Rect?>(null) }
+    var panelRect by remember { mutableStateOf<Rect?>(null) }
     val progress = remember { Animatable(if (show) 1f else 0f) }
     LaunchedEffect(show) {
         if (show) {
@@ -101,23 +102,26 @@ fun AddImageDialog(
 
     if (mounted) {
         // 按钮中心 �? 遮罩中心 的位移（窗口坐标一致）
-        val ov = overlayRect
-        val btn = addButtonRect
-        val (deltaX, deltaY) = if (ov != null && btn != null) {
-            val bx = (btn.left + btn.right) / 2f - ov.left
-            val by = (btn.top + btn.bottom) / 2f - ov.top
-            (bx - ov.width / 2f) to (by - ov.height / 2f)
-        } else (0f to 0f)
-
+        val src = addButtonRect
+        val dst = panelRect
         val p = progress.value
-        val scale = lerp(0.12f, 1f, p)
-        val tx = lerp(deltaX, 0f, p)
-        val ty = lerp(deltaY, 0f, p)
+        val sX: Float
+        val sY: Float
+        val tX: Float
+        val tY: Float
+        if (src != null && dst != null && dst.width > 0f && dst.height > 0f) {
+            sX = lerp(src.width / dst.width, 1f, p)
+            sY = lerp(src.height / dst.height, 1f, p)
+            tX = lerp(src.left - dst.left, 0f, p)
+            tY = lerp(src.top - dst.top, 0f, p)
+        } else {
+            val s = lerp(0.2f, 1f, p)
+            sX = s; sY = s; tX = 0f; tY = 0f
+        }
 
         Box(
             Modifier
                 .fillMaxSize()
-                .onGloballyPositioned { overlayRect = it.boundsInWindow() }
                 .background(Color.Black.copy(alpha = 0.5f * p))
                 .clickable { onDismiss() },
             contentAlignment = Alignment.Center
@@ -125,12 +129,14 @@ fun AddImageDialog(
             Card(
                 modifier = Modifier
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = tx
-                        translationY = ty
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = sX
+                        scaleY = sY
+                        translationX = tX
+                        translationY = tY
                     }
-                    .fillMaxWidth(0.82f)
+                    .onGloballyPositioned { panelRect = it.boundsInWindow() }
+                    .fillMaxWidth(0.86f)
                     .wrapContentHeight()
                     .clip(RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),

@@ -5,6 +5,8 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -23,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -116,7 +119,11 @@ fun GameScreen(navController: NavController, saveId: String) {
         PixelColorApp.logEntry("GameEntry", "=== 画布加载完毕 total=${t3-t0}ms ===")
     }
 
-    Box(Modifier.fillMaxSize().background(theme.bg)) {
+    // 「启动应用」式入场动画：画布从略小放大并淡入
+    val enter = remember { Animatable(0.9f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+
+    Box(Modifier.graphicsLayer { scaleX = enter.value; scaleY = enter.value; alpha = ((enter.value - 0.9f) / 0.1f).coerceIn(0f, 1f) }.fillMaxSize().background(theme.bg)) {
         if (isLoading) {
             Box(Modifier.fillMaxSize().background(theme.bg).systemBarsPadding(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
