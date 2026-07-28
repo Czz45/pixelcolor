@@ -26,9 +26,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,12 +42,13 @@ import java.io.File
 import java.util.UUID
 
 /**
- * ã€Œé€‰æ‹©å›¾ç‰‡ã€æ‚¬æµ®çª—ï¼ˆå±…ä¸­å¼¹çª—ï¼‰ã€?
- * å¼€å?/å…³é—­é‡‡ç”¨ã€Œå¯åŠ¨åº”ç”¨ã€å¼åŠ¨ç”»ï¼šå¡ç‰‡ä»Žã€?+ã€æŒ‰é’®çš„çœŸå®žåæ ‡ç¼©æ”¾+ä½ç§»åˆ°å±å¹•ä¸­å¤?
- * ï¼ˆèµ·å§‹çº¦å›¾æ ‡å¤§å°å¹¶é’‰åœ¨æŒ‰é’®ä¸­å¿ƒï¼Œå†å±•å¼€åˆ°å±…ä¸­é“ºå¼€ï¼‰ï¼Œå…³é—­æ—¶åå‘æ”¶å›žã€?
- * åœ¨çº¿å›¾æºå·²åœ¨é¦–é¡µã€Œåœ¨çº¿ã€æ ‡ç­¾æä¾›ï¼Œæ•…æ­¤å¤„ä»…æœ¬åœ°æ¥æºï¼ˆç›¸å†? / æ‹ç…§ï¼‰ã€?
+ * ¡¸Ñ¡ÔñÍ¼Æ¬¡¹Ðü¸¡´°£¨¾ÓÖÐµ¯´°£©¡£
+ * ¡¸Æô¶¯Ó¦ÓÃ¡¹Ê½¶¯»­£ºÕûÕÅ¡¸+¡¹¿¨Æ¬´ÓËüÔÚ»­ÀÈÀïµÄÕæÊµÎ»ÖÃ/´óÐ¡£¬¾ØÐÎÐÎ±ä·Å´ó³É¾ÓÖÐ´°¿Ú¡£
+ *  - Íâ²ã£¨¿¨Æ¬¿ò£©£ºÓÉ¡¸+¡¹¿¨Æ¬¾ØÐÎ ¡ú Ãæ°å¾ØÐÎ×ö scale + translate£¬transformOrigin ÉèÎª×óÉÏ½Ç£»
+ *  - ÄÚ²ã£¨ÄÚÈÝ£©£ºµ¥¶À×ö alpha 0¡ú1 µ­Èë£¬²¢·´ÏòËõ·ÅµÖÏûÍâ²ãµÄ·Ç¾ùÔÈÀ­Éì£¬Òò´ËÄÚÈÝ²»»û±ä¡¢Ö»ÊÇ´ÓÍ¸Ã÷µ½²»Í¸Ã÷¡£
+ * ÔÚÏßÍ¼Ô´ÒÑÔÚÊ×Ò³¡¸ÔÚÏß¡¹±êÇ©Ìá¹©£¬¹Ê´Ë´¦½ö±¾µØÀ´Ô´£¨Ïà²á / ÅÄÕÕ£©¡£
  *
- * @param addButtonRect ã€?+ã€æŒ‰é’®åœ¨çª—å£ä¸­çš„åæ ‡ï¼Œç”¨äºŽé©±åŠ¨ä»ŽæŒ‰é’®ç”Ÿé•¿åˆ°ä¸­å¤®çš„åŠ¨ç”»ã€?
+ * @param addButtonRect ¡¸+¡¹°´Å¥ÔÚ´°¿ÚÖÐµÄ×ø±ê£¬ÓÃÓÚÇý¶¯´Ó°´Å¥Éú³¤µ½ÖÐÑëµÄ¶¯»­¡£
  */
 @Composable
 fun AddImageDialog(
@@ -66,7 +67,7 @@ fun AddImageDialog(
             try {
                 navController.navigate(Screen.PixelPreview.create(Uri.encode(it.toString())))
             } catch (e: Exception) {
-                Toast.makeText(context, "æ— æ³•æ‰“å¼€å›¾ç‰‡: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "ÎÞ·¨´ò¿ªÍ¼Æ¬: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -80,15 +81,15 @@ fun AddImageDialog(
             try {
                 navController.navigate(Screen.PixelPreview.create(Uri.encode(uri.toString())))
             } catch (e: Exception) {
-                Toast.makeText(context, "æ— æ³•æ‰“å¼€ç…§ç‰‡: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "ÎÞ·¨´ò¿ªÕÕÆ¬: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
         pendingCameraUri.value = null
     }
 
-    // ã€Œå¯åŠ¨åº”ç”¨ã€å¼åŠ¨ç”»ï¼šè¿›åº? 0=ç¼©åœ¨æŒ‰é’®å¤„ï¼Œ1=å±…ä¸­é“ºå¼€
+    // ¡¸Æô¶¯Ó¦ÓÃ¡¹Ê½¶¯»­£º½ø¶È 0=ËõÔÚ°´Å¥´¦£¬1=¾ÓÖÐÆÌ¿ª
     var mounted by remember { mutableStateOf(show) }
-    var panelRect by remember { mutableStateOf<Rect?>(null) }
+    var overlayRect by remember { mutableStateOf<Rect?>(null) }
     val progress = remember { Animatable(if (show) 1f else 0f) }
     LaunchedEffect(show) {
         if (show) {
@@ -101,86 +102,97 @@ fun AddImageDialog(
     }
 
     if (mounted) {
-        // æŒ‰é’®ä¸­å¿ƒ â†? é®ç½©ä¸­å¿ƒ çš„ä½ç§»ï¼ˆçª—å£åæ ‡ä¸€è‡´ï¼‰
-        val src = addButtonRect
-        val dst = panelRect
         val p = progress.value
-        val sX: Float
-        val sY: Float
-        val tX: Float
-        val tY: Float
-        if (src != null && dst != null && dst.width > 0f && dst.height > 0f) {
-            sX = lerp(src.width / dst.width, 1f, p)
-            sY = lerp(src.height / dst.height, 1f, p)
-            tX = lerp(src.left - dst.left, 0f, p)
-            tY = lerp(src.top - dst.top, 0f, p)
-        } else {
-            val s = lerp(0.2f, 1f, p)
-            sX = s; sY = s; tX = 0f; tY = 0f
-        }
-
+        // ÕÚÕÖÊ¼ÖÕ¹ÒÔØÒÔÁ¿È¡×ÔÉí´°¿Ú×ø±ê£¨Ê×Ö¡¼´¿ÉÓÃ£¬±ÜÃâ»ØÍË¾ÓÖÐµÄÉÁÏÖ£©
         Box(
             Modifier
                 .fillMaxSize()
+                .onGloballyPositioned { overlayRect = it.boundsInWindow() }
                 .background(Color.Black.copy(alpha = 0.5f * p))
                 .clickable { onDismiss() },
             contentAlignment = Alignment.Center
         ) {
-            Card(
-                modifier = Modifier
-                    .graphicsLayer {
-                        transformOrigin = TransformOrigin(0f, 0f)
-                        scaleX = sX
-                        scaleY = sY
-                        translationX = tX
-                        translationY = tY
-                    }
-                    .onGloballyPositioned { panelRect = it.boundsInWindow() }
-                    .fillMaxWidth(0.86f)
-                    .wrapContentHeight()
-                    .clip(RoundedCornerShape(22.dp)),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = theme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
-            ) {
-                Column(Modifier.padding(vertical = 10.dp)) {
-                    Text(
-                        "é€‰æ‹©å›¾ç‰‡",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = theme.onBg,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-                    )
-                    HorizontalDividerColor(theme)
-                    AddOption(
-                        icon = Icons.Filled.PhotoLibrary,
-                        title = "ä»Žç›¸å†Œé€‰æ‹©",
-                        subtitle = "ä»Žæœ¬åœ°ç›¸å†ŒæŒ‘é€‰ä¸€å¼ ç…§ç‰?",
-                        theme = theme
-                    ) {
-                        onDismiss()
-                        try {
-                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "æ— æ³•æ‰“å¼€ç›¸å†Œ: ${e.message}", Toast.LENGTH_SHORT).show()
+            // ½öµ±×ø±ê¾ÍÐ÷ºóÔÙ»æÖÆÃæ°å£¬±ÜÃâÊ×Ö¡»ØÍËµ½¾ÓÖÐÔì³ÉµÄÉÁÏÖ
+            if (overlayRect != null && addButtonRect != null) {
+                val ov = overlayRect!!
+                val src = addButtonRect!!
+                // Ä¿±êÃæ°å¾ØÐÎ£ºÆÁÄ»¾ÓÖÐ£¬¿í 0.88¡¢¸ß 0.46£¨ÓëÏÂ·½ Card µÄ¹Ì¶¨±ÈÀýÒ»ÖÂ£©
+                val tw = ov.width * 0.88f
+                val th = ov.height * 0.46f
+                val tl = ov.left + (ov.width - tw) / 2f
+                val tt = ov.top + (ov.height - th) / 2f
+
+                val sX = lerp(src.width / tw, 1f, p)
+                val sY = lerp(src.height / th, 1f, p)
+                val tX = lerp(src.left - tl, 0f, p)
+                val tY = lerp(src.top - tt, 0f, p)
+
+                Card(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            scaleX = sX
+                            scaleY = sY
+                            translationX = tX
+                            translationY = tY
                         }
-                    }
-                    AddOption(
-                        icon = Icons.Filled.PhotoCamera,
-                        title = "æ‹ç…§",
-                        subtitle = "ç”¨ç›¸æœºæ‹ä¸€å¼ æ–°ç…§ç‰‡",
-                        theme = theme
+                        .fillMaxWidth(0.88f)
+                        .fillMaxHeight(0.46f)
+                        .clip(RoundedCornerShape(22.dp)),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = theme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+                ) {
+                    // ÄÚÈÝ£ºµ¥¶Àµ­Èë + ·´ÏòËõ·ÅµÖÏûÍâ²ãÀ­Éì ¡ú ²»±äÐÎ
+                    Column(
+                        Modifier
+                            .graphicsLayer {
+                                alpha = p
+                                scaleX = if (sX > 0.0001f) 1f / sX else 1f
+                                scaleY = if (sY > 0.0001f) 1f / sY else 1f
+                            }
+                            .fillMaxSize()
+                            .padding(vertical = 10.dp),
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        onDismiss()
-                        try {
-                            val dir = File(context.cacheDir, "camera_photos")
-                            dir.mkdirs()
-                            val file = File(dir, "${UUID.randomUUID()}.jpg")
-                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                            pendingCameraUri.value = uri
-                            cameraLauncher.launch(uri)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "æ— æ³•å¯åŠ¨ç›¸æœº: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Text(
+                            "Ñ¡ÔñÍ¼Æ¬",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.onBg,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        )
+                        HorizontalDividerColor(theme)
+                        AddOption(
+                            icon = Icons.Filled.PhotoLibrary,
+                            title = "´ÓÏà²áÑ¡Ôñ",
+                            subtitle = "´Ó±¾µØÏà²áÌôÑ¡Ò»ÕÅÕÕÆ¬",
+                            theme = theme
+                        ) {
+                            onDismiss()
+                            try {
+                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "ÎÞ·¨´ò¿ªÏà²á: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        AddOption(
+                            icon = Icons.Filled.PhotoCamera,
+                            title = "ÅÄÕÕ",
+                            subtitle = "ÓÃÏà»úÅÄÒ»ÕÅÐÂÕÕÆ¬",
+                            theme = theme
+                        ) {
+                            onDismiss()
+                            try {
+                                val dir = File(context.cacheDir, "camera_photos")
+                                dir.mkdirs()
+                                val file = File(dir, "${UUID.randomUUID()}.jpg")
+                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                                pendingCameraUri.value = uri
+                                cameraLauncher.launch(uri)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "ÎÞ·¨Æô¶¯Ïà»ú: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
