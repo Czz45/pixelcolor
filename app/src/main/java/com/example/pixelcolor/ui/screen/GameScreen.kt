@@ -44,6 +44,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pixelcolor.navigation.Screen
 import com.example.pixelcolor.PixelColorApp
+import com.example.pixelcolor.engine.ColorPalette
+import com.example.pixelcolor.engine.PaletteColor
 import com.example.pixelcolor.ui.component.ColorPaletteBar
 import com.example.pixelcolor.ui.component.PixelCanvasView
 import com.example.pixelcolor.ui.theme.LocalAppTheme
@@ -68,6 +70,15 @@ object GameLaunchRectHolder {
     var gridW: Int = 0
     var gridH: Int = 0
 }
+
+/**
+ * 加载态底部 chrome 用的占位调色板。只需一个「被选中」的色块即可——调色板高度由色块固定尺寸
+ * （选中 62dp）+ 排序行固定高度决定，与真实调色板颜色数量无关，因此加载态与真实画布底部高度一致，
+ * 画作在画布区内垂直居中的位置就能对齐。
+ */
+private val DUMMY_PALETTE = ColorPalette(
+    listOf(PaletteColor(code = 0, color = 0xFF888888L, totalCount = 1, remainingCount = 1))
+)
 
 @Composable
 fun GameScreen(navController: NavController, saveId: String) {
@@ -268,83 +279,32 @@ fun GameScreen(navController: NavController, saveId: String) {
                         }
                     }
 
-                    // Floating toolbar (horizontal, above palette)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 2.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(theme.surface.copy(alpha = 0.9f))
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Palette toggle
-                        FloatingPixelButton(
-                            onClick = { showPalette = !showPalette },
-                            active = showPalette,
-                            label = "🎨"
-                        )
-                        // Area fill
-                        FloatingPixelButton(
-                            onClick = { areaFillMode = !areaFillMode },
-                            active = areaFillMode,
-                            label = "🪣"
-                        )
-                        // Free paint
-                        FloatingPixelButton(
-                            onClick = {
-                                freePaintMode = !freePaintMode
-                                if (freePaintMode) areaFillMode = false
-                            },
-                            active = freePaintMode,
-                            label = "✏️"
-                        )
-                        // Brush size
-                        FloatingPixelButton(
-                            onClick = { brushSize = if (brushSize >= 5f) 1f else brushSize + 1f },
-                            active = brushSize > 1f,
-                            label = "${brushSize.toInt()}×"
-                        )
-                        // Auto mode
-                        FloatingPixelButton(
-                            onClick = { autoMode = !autoMode },
-                            active = autoMode,
-                            label = "⚡"
-                        )
-                        // Preview
-                        FloatingPixelButton(
-                            onClick = {
-                                vm.saveCurrentState()
-                                navController.navigate(Screen.Completion.create(vm.saveId ?: "", preview = true))
-                            },
-                            active = false,
-                            label = "👁"
-                        )
-                    }
-
-                    // Collapsible palette bar (animated)
-                    AnimatedVisibility(
-                        visible = showPalette,
-                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                    ) {
-                        Surface(
-                            color = theme.surface,
-                            tonalElevation = 0.dp
-                        ) {
-                            Column(Modifier.navigationBarsPadding()) {
-                                ColorPaletteBar(
-                                    palette = currentState.palette,
-                                    selectedColorCode = currentState.selectedColorCode,
-                                    onColorSelected = { vm.onColorSelected(it) },
-                                    initialSortMode = colorSortMode,
-                                    initialReversed = colorSortReversed,
-                                    onSortModeChanged = { mode, reversed -> vm.onColorSortModeChanged(mode, reversed) }
-                                )
-                            }
-                        }
-                    }
+                    // 底部 chrome（工具条 + 调色板），与加载态共用同一组合，保证两者高度一致、画作垂直居中对齐。
+                    GameBottomChrome(
+                        palette = currentState.palette,
+                        selectedColorCode = currentState.selectedColorCode,
+                        showPalette = showPalette,
+                        brushSize = brushSize,
+                        areaFillMode = areaFillMode,
+                        freePaintMode = freePaintMode,
+                        autoMode = autoMode,
+                        colorSortMode = colorSortMode,
+                        colorSortReversed = colorSortReversed,
+                        onPaletteToggle = { showPalette = !showPalette },
+                        onAreaFillToggle = { areaFillMode = !areaFillMode },
+                        onFreePaintToggle = {
+                            freePaintMode = !freePaintMode
+                            if (freePaintMode) areaFillMode = false
+                        },
+                        onBrushToggle = { brushSize = if (brushSize >= 5f) 1f else brushSize + 1f },
+                        onAutoToggle = { autoMode = !autoMode },
+                        onPreview = {
+                            vm.saveCurrentState()
+                            navController.navigate(Screen.Completion.create(vm.saveId ?: "", preview = true))
+                        },
+                        onSortModeChanged = { mode, reversed -> vm.onColorSortModeChanged(mode, reversed) },
+                        onColorSelected = { vm.onColorSelected(it) }
+                    )
                 }
 
                 // Completed works stay on GameScreen for viewing
@@ -410,13 +370,132 @@ private fun LoadingPreviewContent(navController: NavController, launchPreview: a
                     val aspect = if (gridW > 0 && gridH > 0) gridW.toFloat() / gridH else launchPreview.width.toFloat() / launchPreview.height
                     val drawWpx = if (vw / vh > aspect) vh * aspect else vw
                     val drawHpx = if (vw / vh > aspect) vh else vw / aspect
-                    android.util.Log.d("LaunchAlign", "LOADING canvasArea=${vw.toInt()}x${vh.toInt()} gridAspect=$aspect previewRect=${drawWpx.toInt()}x${drawHpx.toInt()}")
                     Box(Modifier.size(drawWpx.dp, drawHpx.dp)) {
                         Image(bitmap = launchPreview.asImageBitmap(), contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
                     }
                 }
             } else {
                 CircularProgressIndicator(color = theme.accent)
+            }
+        }
+        // 复用与真实画布相同的底部 chrome（工具条 + 调色板），高度一致 → 画布区高度一致 → 画作垂直居中位置对齐。
+        GameBottomChrome(
+            palette = DUMMY_PALETTE,
+            selectedColorCode = 0,
+            showPalette = true,
+            brushSize = 1f,
+            areaFillMode = false,
+            freePaintMode = false,
+            autoMode = false,
+            colorSortMode = 0,
+            colorSortReversed = false,
+            onPaletteToggle = {},
+            onAreaFillToggle = {},
+            onFreePaintToggle = {},
+            onBrushToggle = {},
+            onAutoToggle = {},
+            onPreview = {},
+            onSortModeChanged = { _, _ -> },
+            onColorSelected = {},
+            animate = false
+        )
+    }
+}
+
+/**
+ * 底部 chrome（悬浮工具条 + 可折叠调色板），真实画布与加载态共用，确保两者底部高度一致，
+ * 从而画作在画布区内垂直居中的位置完全对齐（修复 v3.28 之前「加载态画作比真实画布高约 82dp」的问题）。
+ */
+@Composable
+private fun GameBottomChrome(
+    palette: ColorPalette,
+    selectedColorCode: Int,
+    showPalette: Boolean,
+    brushSize: Float,
+    areaFillMode: Boolean,
+    freePaintMode: Boolean,
+    autoMode: Boolean,
+    colorSortMode: Int,
+    colorSortReversed: Boolean,
+    onPaletteToggle: () -> Unit,
+    onAreaFillToggle: () -> Unit,
+    onFreePaintToggle: () -> Unit,
+    onBrushToggle: () -> Unit,
+    onAutoToggle: () -> Unit,
+    onPreview: () -> Unit,
+    onSortModeChanged: (Int, Boolean) -> Unit,
+    onColorSelected: (Int) -> Unit,
+    animate: Boolean = true
+) {
+    val theme = LocalAppTheme.current
+    // Floating toolbar (horizontal, above palette)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(theme.surface.copy(alpha = 0.9f))
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Palette toggle
+        FloatingPixelButton(
+            onClick = onPaletteToggle,
+            active = showPalette,
+            label = "🎨"
+        )
+        // Area fill
+        FloatingPixelButton(
+            onClick = onAreaFillToggle,
+            active = areaFillMode,
+            label = "🪣"
+        )
+        // Free paint
+        FloatingPixelButton(
+            onClick = onFreePaintToggle,
+            active = freePaintMode,
+            label = "✏️"
+        )
+        // Brush size
+        FloatingPixelButton(
+            onClick = onBrushToggle,
+            active = brushSize > 1f,
+            label = "${brushSize.toInt()}×"
+        )
+        // Auto mode
+        FloatingPixelButton(
+            onClick = onAutoToggle,
+            active = autoMode,
+            label = "⚡"
+        )
+        // Preview
+        FloatingPixelButton(
+            onClick = onPreview,
+            active = false,
+            label = "👁"
+        )
+    }
+
+    // Collapsible palette bar (animated)
+    AnimatedVisibility(
+        visible = showPalette,
+        enter = if (animate) slideInVertically(initialOffsetY = { it }) + fadeIn() else EnterTransition.None,
+        exit = if (animate) slideOutVertically(targetOffsetY = { it }) + fadeOut() else ExitTransition.None
+    ) {
+        Surface(
+            color = theme.surface,
+            tonalElevation = 0.dp
+        ) {
+            Column(Modifier.navigationBarsPadding()) {
+                ColorPaletteBar(
+                    palette = palette,
+                    selectedColorCode = selectedColorCode,
+                    onColorSelected = onColorSelected,
+                    initialSortMode = colorSortMode,
+                    initialReversed = colorSortReversed,
+                    onSortModeChanged = onSortModeChanged
+                )
             }
         }
     }
