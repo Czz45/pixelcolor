@@ -221,7 +221,7 @@ fun HomeScreen(navController: NavController) {
             ) { page ->
                 when (page) {
                     0 -> GalleryTab(navController, context, repo, theme)
-                    1 -> PixivTab(navController, scope)
+                    1 -> FeaturedTab(navController, scope)
                 }
             }
         }
