@@ -171,21 +171,29 @@ fun GameScreen(navController: NavController, saveId: String) {
             .background(theme.bg)
     ) {
         if (isLoading) {
-            Box(Modifier.fillMaxSize().background(theme.bg).systemBarsPadding(), contentAlignment = Alignment.Center) {
-                if (launchPreview != null) {
-                    // 加载阶段用画作缩略图占位，并随根容器的「从缩略图放大」变换一起缩放，
-                    // 让用户看到的就是这张预览图从画廊缩略图位置一路放大到全屏（而非只有转圈在放大）。
-                    Image(
-                        bitmap = launchPreview.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // 加载阶段复用与正式画布一致的布局（顶栏 + 画布区），让预览图以与真实画布相同的
+            // 居中比例呈现，并随根容器的「从缩略图放大」变换一起缩放——避免「预览铺满全屏、游戏却
+            // 带顶栏且居中」的突兀跳变，过渡无缝。
+            Column(Modifier.fillMaxSize().background(theme.bg)) {
+                FrostedGlassBox(
+                    modifier = Modifier.fillMaxWidth().zIndex(1f).statusBarsPadding().padding(horizontal = 4.dp, vertical = 2.dp),
+                    tintColor = theme.bg, blurRadius = 12.dp, alpha = 0.8f
+                ) {
+                    IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.CenterStart).size(36.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = theme.gold, modifier = Modifier.size(22.dp))
+                    }
+                    Text("填色中…", color = theme.gold, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.align(Alignment.Center))
+                }
+                Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.Center) {
+                    if (launchPreview != null) {
+                        Image(
+                            bitmap = launchPreview.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
                         CircularProgressIndicator(color = theme.accent)
-                        Spacer(Modifier.height(16.dp))
-                        Text("加载中...", color = theme.muted, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
                     }
                 }
             }
