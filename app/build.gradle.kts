@@ -12,13 +12,14 @@ android {
         applicationId = "com.example.pixelcolor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 82
-        versionName = "3.15"
+        versionCode = 83
+        versionName = "3.16"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file("C:/Users/Administrator/.android/debug.keystore")
+            // 可移植：优先用环境变量 ANDROID_KEYSTORE_PATH，否则取项目内相对路径（默认 release.keystore）
+            storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"

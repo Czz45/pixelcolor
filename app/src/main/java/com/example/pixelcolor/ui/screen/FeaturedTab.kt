@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit
  */
 
 /** 二次元图源（公开 API、免登录）。 */
-private enum class AnimeSource(
+enum class AnimeSource(
     val label: String,
     val listUrl: String,    // 列表接口（不含 limit/分页）
     val pageParam: String,  // 分页参数名：Safebooru 用 pid，其余用 page
