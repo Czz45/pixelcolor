@@ -38,14 +38,13 @@ import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pixelcolor.navigation.Screen
 import com.example.pixelcolor.PixelColorApp
 import com.example.pixelcolor.engine.ColorPalette
-import com.example.pixelcolor.engine.PaletteColor
 import com.example.pixelcolor.ui.component.ColorPaletteBar
 import com.example.pixelcolor.ui.component.PixelCanvasView
 import com.example.pixelcolor.ui.theme.LocalAppTheme
@@ -70,15 +69,6 @@ object GameLaunchRectHolder {
     var gridW: Int = 0
     var gridH: Int = 0
 }
-
-/**
- * 加载态底部 chrome 用的占位调色板。只需一个「被选中」的色块即可——调色板高度由色块固定尺寸
- * （选中 62dp）+ 排序行固定高度决定，与真实调色板颜色数量无关，因此加载态与真实画布底部高度一致，
- * 画作在画布区内垂直居中的位置就能对齐。
- */
-private val DUMMY_PALETTE = ColorPalette(
-    listOf(PaletteColor(code = 0, color = 0xFF888888L, totalCount = 1, remainingCount = 1))
-)
 
 @Composable
 fun GameScreen(navController: NavController, saveId: String) {
@@ -157,6 +147,9 @@ fun GameScreen(navController: NavController, saveId: String) {
     val launchGridW = remember { GameLaunchRectHolder.gridW.also { GameLaunchRectHolder.gridW = 0 } }
     val launchGridH = remember { GameLaunchRectHolder.gridH.also { GameLaunchRectHolder.gridH = 0 } }
     var overlayRect by remember { mutableStateOf<Rect?>(null) }
+    // 测量真实顶栏与底部 chrome 的高度，用于计算画作在画布里的精确矩形（落点对齐）。
+    var topBarH by remember { mutableFloatStateOf(0f) }
+    var chromeH by remember { mutableFloatStateOf(0f) }
     val hasLaunch = launchRect != null
     val progress = remember { Animatable(if (hasLaunch) 0f else 1f) }
     LaunchedEffect(Unit) {
@@ -198,7 +191,7 @@ fun GameScreen(navController: NavController, saveId: String) {
                 val tSec = (displayTimeMs / 1000) % 60
                 val timeText = if (tMin > 0) "${tMin}m${tSec}s" else "${tSec}s"
                 Column(Modifier.fillMaxSize().background(theme.bg)) {
-                    GameTopBar(navController, "${"%.4f".format(currentState.progress * 100)}%", timeText, true)
+                    GameTopBar(navController, "${"%.4f".format(currentState.progress * 100)}%", timeText, true, onMeasured = { topBarH = it })
 
                     // Canvas area (takes all remaining space)
                     Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
@@ -303,29 +296,85 @@ fun GameScreen(navController: NavController, saveId: String) {
                             navController.navigate(Screen.Completion.create(vm.saveId ?: "", preview = true))
                         },
                         onSortModeChanged = { mode, reversed -> vm.onColorSortModeChanged(mode, reversed) },
-                        onColorSelected = { vm.onColorSelected(it) }
+                        onColorSelected = { vm.onColorSelected(it) },
+                        onMeasured = { chromeH = it }
                     )
                 }
 
                 // Completed works stay on GameScreen for viewing
             }
         }
-        // 跨淡出遮罩：用与加载完全相同的布局盖在真实画布之上，进入画布后淡出 ~280ms，
-        // 遮住画布位图异步生成期间的空白/闪跳；其预览落点与真实画作完全一致。
-        if (launchPreview != null && !isLoading) {
-            var overlayAlpha by remember { mutableFloatStateOf(1f) }
+        // 入场落位动画：画布加载完后，把居中显示的预览图「移动」到真实画布里画作的位置，再淡出消失。
+        // 起始位置 = 加载态预览图（屏幕−顶栏画布区居中）；目标位置 = 真实画布里画作矩形
+        // （画布区 = 屏幕−顶栏−底部chrome，画作按同款算法居中）。落点用真实布局算，必然与真实画作重合。
+        if (launchPreview != null && !isLoading && overlayRect != null) {
+            val root = overlayRect!!
+            val rootW = root.width
+            val rootH = root.height
+            val aspect = if (launchGridW > 0 && launchGridH > 0) launchGridW.toFloat() / launchGridH
+                         else launchPreview.width.toFloat() / launchPreview.height
+            val realAspect = if (gameState?.canvas != null) gameState!!.canvas.width.toFloat() / gameState!!.canvas.height else aspect
+            // 起始矩形（root 本地坐标，px）：加载态预览图所在位置
+            val startArea = computeDrawRect(0f, topBarH, rootW, rootH - topBarH, aspect)
+            // 目标矩形：真实画作所在位置（画布区减去底部 chrome）
+            val targetArea = computeDrawRect(0f, topBarH, rootW, (rootH - topBarH - chromeH).coerceAtLeast(1f), realAspect)
+            val sx0 = startArea.left + startArea.width / 2f
+            val sy0 = startArea.top + startArea.height / 2f
+            val sx1 = targetArea.left + targetArea.width / 2f
+            val sy1 = targetArea.top + targetArea.height / 2f
+            val f = if (startArea.width > 0f) targetArea.width / startArea.width else 1f
+            val settle = remember { Animatable(0f) }
             LaunchedEffect(Unit) {
-                val a = androidx.compose.animation.core.Animatable(1f)
-                a.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
-                overlayAlpha = a.value
+                // 先等一帧让底部 chrome 高度测量完成，避免起始帧跳变
+                delay(30)
+                settle.animateTo(1f, tween(360, easing = FastOutSlowInEasing))
             }
-            if (overlayAlpha > 0.001f) {
-                Box(Modifier.fillMaxSize().zIndex(20f).graphicsLayer { alpha = overlayAlpha }) {
-                    LoadingPreviewContent(navController, launchPreview, launchGridW, launchGridH, false)
+            val p = settle.value
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .zIndex(20f)
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(sx0 / rootW, sy0 / rootH)
+                        scaleX = lerp(1f, f, p)
+                        scaleY = lerp(1f, f, p)
+                        translationX = lerp(0f, sx1 - sx0, p)
+                        translationY = lerp(0f, sy1 - sy0, p)
+                        // 先移动到画作位置（前 70%），再淡出消失（后 30%）
+                        alpha = lerp(1f, 0f, ((p - 0.7f) / 0.3f).coerceIn(0f, 1f))
+                    }
+            ) {
+                // 仅绘制预览图，起始位置与加载态完全一致（屏幕−顶栏画布区居中），由外层 graphicsLayer 变换到画作位置
+                val topPad = with(LocalDensity.current) { topBarH.toDp() }
+                Box(
+                    Modifier.fillMaxSize().padding(top = topPad),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        val vw = maxWidth.value
+                        val vh = maxHeight.value
+                        val a = if (launchGridW > 0 && launchGridH > 0) launchGridW.toFloat() / launchGridH
+                                else launchPreview.width.toFloat() / launchPreview.height
+                        val drawWpx = if (vw / vh > a) vh * a else vw
+                        val drawHpx = if (vw / vh > a) vh else vw / a
+                        Box(Modifier.size(drawWpx.dp, drawHpx.dp)) {
+                            Image(bitmap = launchPreview.asImageBitmap(), contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+/**
+ * 在给定画布区内按 drawArea 算法（与 PixelCanvasView 完全一致）计算画作居中矩形（root 本地坐标，px）。
+ */
+private fun computeDrawRect(areaX: Float, areaY: Float, areaW: Float, areaH: Float, aspect: Float): Rect {
+    val (dw, dh) = if (areaW / areaH > aspect) Pair(areaH * aspect, areaH) else Pair(areaW, areaW / aspect)
+    val dx = areaX + (areaW - dw) / 2f
+    val dy = areaY + (areaH - dh) / 2f
+    return Rect(dx, dy, dx + dw, dy + dh)
 }
 
 @Composable
@@ -333,11 +382,12 @@ private fun GameTopBar(
     navController: NavController,
     progressText: String,
     timeText: String,
-    interactive: Boolean
+    interactive: Boolean,
+    onMeasured: (Float) -> Unit = {}
 ) {
     val theme = LocalAppTheme.current
     FrostedGlassBox(
-        modifier = Modifier.fillMaxWidth().zIndex(1f).statusBarsPadding().padding(horizontal = 4.dp, vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().zIndex(1f).statusBarsPadding().padding(horizontal = 4.dp, vertical = 2.dp).onGloballyPositioned { onMeasured(it.size.height.toFloat()) },
         tintColor = theme.bg, blurRadius = 12.dp, alpha = 0.8f
     ) {
         if (interactive) {
@@ -378,27 +428,6 @@ private fun LoadingPreviewContent(navController: NavController, launchPreview: a
                 CircularProgressIndicator(color = theme.accent)
             }
         }
-        // 复用与真实画布相同的底部 chrome（工具条 + 调色板），高度一致 → 画布区高度一致 → 画作垂直居中位置对齐。
-        GameBottomChrome(
-            palette = DUMMY_PALETTE,
-            selectedColorCode = 0,
-            showPalette = true,
-            brushSize = 1f,
-            areaFillMode = false,
-            freePaintMode = false,
-            autoMode = false,
-            colorSortMode = 0,
-            colorSortReversed = false,
-            onPaletteToggle = {},
-            onAreaFillToggle = {},
-            onFreePaintToggle = {},
-            onBrushToggle = {},
-            onAutoToggle = {},
-            onPreview = {},
-            onSortModeChanged = { _, _ -> },
-            onColorSelected = {},
-            animate = false
-        )
     }
 }
 
@@ -425,9 +454,11 @@ private fun GameBottomChrome(
     onPreview: () -> Unit,
     onSortModeChanged: (Int, Boolean) -> Unit,
     onColorSelected: (Int) -> Unit,
-    animate: Boolean = true
+    animate: Boolean = true,
+    onMeasured: (Float) -> Unit = {}
 ) {
     val theme = LocalAppTheme.current
+    Column(Modifier.onGloballyPositioned { onMeasured(it.size.height.toFloat()) }) {
     // Floating toolbar (horizontal, above palette)
     Row(
         modifier = Modifier
@@ -498,6 +529,7 @@ private fun GameBottomChrome(
                 )
             }
         }
+    }
     }
 }
 
