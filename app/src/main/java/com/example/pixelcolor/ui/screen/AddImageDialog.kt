@@ -5,13 +5,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,11 +23,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import com.example.pixelcolor.navigation.Screen
@@ -40,15 +41,19 @@ import java.io.File
 import java.util.UUID
 
 /**
- * 「选择图片」悬浮窗（居中弹窗）。
- * 取代原先整页跳转的 GalleryScreen：点击画廊里的「+」即弹出，包含「相册」「拍照」两个入口；
- * 打开/关闭带「从底部放大到中间 + 淡入」的过渡动画。在线图源已在首页「在线」标签提供，故此处仅本地来源。
+ * 「选择图片」悬浮窗（居中弹窗）�?
+ * 开�?/关闭采用「启动应用」式动画：卡片从�?+」按钮的真实坐标缩放+位移到屏幕中�?
+ * （起始约图标大小并钉在按钮中心，再展开到居中铺开），关闭时反向收回�?
+ * 在线图源已在首页「在线」标签提供，故此处仅本地来源（相�? / 拍照）�?
+ *
+ * @param addButtonRect �?+」按钮在窗口中的坐标，用于驱动从按钮生长到中央的动画�?
  */
 @Composable
 fun AddImageDialog(
     show: Boolean,
     onDismiss: () -> Unit,
-    navController: NavController
+    navController: NavController,
+    addButtonRect: Rect? = null
 ) {
     val context = LocalContext.current
     val theme = LocalAppTheme.current
@@ -80,29 +85,51 @@ fun AddImageDialog(
         pendingCameraUri.value = null
     }
 
-    AnimatedVisibility(
-        visible = show,
-        enter = fadeIn(animationSpec = tween(180)) +
-                scaleIn(
-                    initialScale = 0.94f,
-                    animationSpec = tween(240, easing = FastOutSlowInEasing)
-                ),
-        exit = fadeOut(animationSpec = tween(140)) +
-                scaleOut(
-                    targetScale = 0.96f,
-                    animationSpec = tween(140, easing = FastOutSlowInEasing)
-                )
-    ) {
-        // 半透明遮罩，点击空白关闭
+    // 「启动应用」式动画：进�? 0=缩在按钮处，1=居中铺开
+    var mounted by remember { mutableStateOf(show) }
+    var overlayRect by remember { mutableStateOf<Rect?>(null) }
+    val progress = remember { Animatable(if (show) 1f else 0f) }
+    LaunchedEffect(show) {
+        if (show) {
+            mounted = true
+            progress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+        } else {
+            progress.animateTo(0f, tween(200, easing = FastOutSlowInEasing))
+            mounted = false
+        }
+    }
+
+    if (mounted) {
+        // 按钮中心 �? 遮罩中心 的位移（窗口坐标一致）
+        val ov = overlayRect
+        val btn = addButtonRect
+        val (deltaX, deltaY) = if (ov != null && btn != null) {
+            val bx = (btn.left + btn.right) / 2f - ov.left
+            val by = (btn.top + btn.bottom) / 2f - ov.top
+            (bx - ov.width / 2f) to (by - ov.height / 2f)
+        } else (0f to 0f)
+
+        val p = progress.value
+        val scale = lerp(0.12f, 1f, p)
+        val tx = lerp(deltaX, 0f, p)
+        val ty = lerp(deltaY, 0f, p)
+
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
+                .onGloballyPositioned { overlayRect = it.boundsInWindow() }
+                .background(Color.Black.copy(alpha = 0.5f * p))
                 .clickable { onDismiss() },
             contentAlignment = Alignment.Center
         ) {
             Card(
                 modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = tx
+                        translationY = ty
+                    }
                     .fillMaxWidth(0.82f)
                     .wrapContentHeight()
                     .clip(RoundedCornerShape(22.dp)),
@@ -122,7 +149,7 @@ fun AddImageDialog(
                     AddOption(
                         icon = Icons.Filled.PhotoLibrary,
                         title = "从相册选择",
-                        subtitle = "从本地相册挑选一张照片",
+                        subtitle = "从本地相册挑选一张照�?",
                         theme = theme
                     ) {
                         onDismiss()

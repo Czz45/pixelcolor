@@ -24,6 +24,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -67,6 +69,7 @@ fun HomeScreen(navController: NavController) {
     var showThemePicker by remember { mutableStateOf(false) }
     var showAchievements by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var addButtonRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
 
     if (showThemePicker) {
         AlertDialog(
@@ -222,12 +225,12 @@ fun HomeScreen(navController: NavController) {
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     when (page) {
-                        0 -> GalleryTab(navController, context, repo, theme, onAddImage = { showAddDialog = true })
+                        0 -> GalleryTab(navController, context, repo, theme, onAddImage = { showAddDialog = true }, addCardModifier = Modifier.onGloballyPositioned { addButtonRect = it.boundsInWindow() })
                         1 -> DiscoverTab(navController, scope)
                     }
                 }
             }
-            AddImageDialog(showAddDialog, onDismiss = { showAddDialog = false }, navController)
+            AddImageDialog(showAddDialog, onDismiss = { showAddDialog = false }, navController, addButtonRect)
         }
     }
 }
@@ -270,7 +273,7 @@ private fun ModernTabRow(selectedIndex: Int, tabs: List<String>, onTabSelected: 
 private val thumbCache = mutableMapOf<String, android.graphics.Bitmap>()
 
 @Composable
-private fun GalleryTab(navController: NavController, context: android.content.Context, repo: GameRepository, theme: com.example.pixelcolor.ui.theme.AppThemeColors, onAddImage: () -> Unit) {
+private fun GalleryTab(navController: NavController, context: android.content.Context, repo: GameRepository, theme: com.example.pixelcolor.ui.theme.AppThemeColors, onAddImage: () -> Unit, addCardModifier: Modifier = Modifier) {
     var refresh by remember { mutableIntStateOf(0) }
     val saves = remember(refresh) { repo.listSaves() }
     LaunchedEffect(Unit) { refresh++ }
@@ -285,7 +288,7 @@ private fun GalleryTab(navController: NavController, context: android.content.Co
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "__add_new__") {
-            AddNewCard(theme) { onAddImage() }
+            AddNewCard(theme, addCardModifier) { onAddImage() }
         }
         if (sorted.isEmpty()) {
             item {
@@ -308,9 +311,9 @@ private fun GalleryTab(navController: NavController, context: android.content.Co
 }
 
 @Composable
-private fun AddNewCard(theme: com.example.pixelcolor.ui.theme.AppThemeColors, onClick: () -> Unit) {
+private fun AddNewCard(theme: com.example.pixelcolor.ui.theme.AppThemeColors, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).clickable { onClick() },
+        modifier = modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
