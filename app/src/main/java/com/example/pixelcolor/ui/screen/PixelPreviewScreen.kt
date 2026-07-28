@@ -82,7 +82,7 @@ fun PixelPreviewScreen(navController: NavController, imageUri: String) {
 
     // 「启动应用」式入场动画：内容从略小放大并淡入到全屏
     val enter = remember { Animatable(0.9f) }
-    LaunchedEffect(Unit) { enter.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(400, easing = FastOutSlowInEasing)) }
 
     // Crop state (fractions 0..1)
     var cropX by remember { mutableFloatStateOf(0f) }

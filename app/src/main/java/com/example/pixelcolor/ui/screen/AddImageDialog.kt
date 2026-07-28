@@ -93,9 +93,9 @@ fun AddImageDialog(
     LaunchedEffect(show) {
         if (show) {
             mounted = true
-            progress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+            progress.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
         } else {
-            progress.animateTo(0f, tween(200, easing = FastOutSlowInEasing))
+            progress.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
             mounted = false
         }
     }
@@ -141,11 +141,7 @@ fun AddImageDialog(
                 ) {
                     Column(
                         Modifier
-                            .graphicsLayer {
-                                alpha = p
-                                scaleX = if (sX > 0.0001f) 1f / sX else 1f
-                                scaleY = if (sY > 0.0001f) 1f / sY else 1f
-                            }
+                            .graphicsLayer { alpha = p }
                             .fillMaxSize()
                             .padding(vertical = 10.dp),
                         verticalArrangement = Arrangement.Center

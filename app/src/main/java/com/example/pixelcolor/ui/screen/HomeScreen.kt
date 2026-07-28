@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -343,6 +344,7 @@ private fun ModernGalleryCard(save: SaveData, navController: NavController, cont
     val filled = save.filledCells.size; val total = w * h; val done = filled >= total
     val progress = if (total > 0) filled * 100 / total else 0
     var showDelete by remember { mutableStateOf(false) }
+    var cardRect by remember { mutableStateOf<Rect?>(null) }
 
     if (showDelete) {
         AlertDialog(
@@ -375,7 +377,9 @@ private fun ModernGalleryCard(save: SaveData, navController: NavController, cont
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).clickable { navController.navigate(Screen.Game.create(save.id)) },
+        modifier = Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp))
+            .onGloballyPositioned { cardRect = it.boundsInWindow() }
+            .clickable { GameLaunchRectHolder.rect = cardRect; navController.navigate(Screen.Game.create(save.id)) },
         shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Column(Modifier.background(theme.surface)) {

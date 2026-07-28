@@ -24,8 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +53,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/**
+ * 进入画布时用于承载「从缩略图位置放大到全屏」的启动动画来源矩形。
+ * 画廊卡片在点击跳转前写入自身在窗口中的坐标，GameScreen 读取后立即清空，避免返回再次进入时重放。
+ */
+object GameLaunchRectHolder {
+    var rect: Rect? = null
+}
 
 @Composable
 fun GameScreen(navController: NavController, saveId: String) {
@@ -119,11 +132,39 @@ fun GameScreen(navController: NavController, saveId: String) {
         PixelColorApp.logEntry("GameEntry", "=== 画布加载完毕 total=${t3-t0}ms ===")
     }
 
-    // 「启动应用」式入场动画：画布从略小放大并淡入
-    val enter = remember { Animatable(0.9f) }
-    LaunchedEffect(Unit) { enter.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+    // 「启动应用」式入场动画：若从画廊缩略图点入，则从该缩略图位置矩形放大到全屏；否则轻微放大淡入。
+    // 内容仅做 alpha 0->1 的透明到不透明淡入，避免反向缩放导致图层缓冲反复重分配而卡顿。
+    val launchRect = remember { GameLaunchRectHolder.rect.also { GameLaunchRectHolder.rect = null } }
+    var overlayRect by remember { mutableStateOf<Rect?>(null) }
+    val hasLaunch = launchRect != null
+    val progress = remember { Animatable(if (hasLaunch) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (hasLaunch) progress.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
+    }
 
-    Box(Modifier.graphicsLayer { scaleX = enter.value; scaleY = enter.value; alpha = ((enter.value - 0.9f) / 0.1f).coerceIn(0f, 1f) }.fillMaxSize().background(theme.bg)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { overlayRect = it.boundsInWindow() }
+            .graphicsLayer {
+                if (hasLaunch && overlayRect != null) {
+                    val ov = overlayRect!!
+                    val src = launchRect!!
+                    scaleX = lerp(src.width / ov.width, 1f, progress.value)
+                    scaleY = lerp(src.height / ov.height, 1f, progress.value)
+                    translationX = lerp(src.left - ov.left, 0f, progress.value)
+                    translationY = lerp(src.top - ov.top, 0f, progress.value)
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    alpha = progress.value
+                } else {
+                    val s = lerp(0.92f, 1f, progress.value)
+                    scaleX = s
+                    scaleY = s
+                    alpha = progress.value.coerceIn(0f, 1f)
+                }
+            }
+            .background(theme.bg)
+    ) {
         if (isLoading) {
             Box(Modifier.fillMaxSize().background(theme.bg).systemBarsPadding(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
