@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -83,17 +82,15 @@ fun AddImageDialog(
 
     AnimatedVisibility(
         visible = show,
-        enter = fadeIn(animationSpec = tween(200)) +
+        enter = fadeIn(animationSpec = tween(180)) +
                 scaleIn(
-                    initialScale = 0.6f,
-                    transformOrigin = TransformOrigin(0.5f, 0.88f),
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    initialScale = 0.94f,
+                    animationSpec = tween(240, easing = FastOutSlowInEasing)
                 ),
-        exit = fadeOut(animationSpec = tween(150)) +
+        exit = fadeOut(animationSpec = tween(140)) +
                 scaleOut(
-                    targetScale = 0.6f,
-                    transformOrigin = TransformOrigin(0.5f, 0.88f),
-                    animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    targetScale = 0.96f,
+                    animationSpec = tween(140, easing = FastOutSlowInEasing)
                 )
     ) {
         // 半透明遮罩，点击空白关闭
