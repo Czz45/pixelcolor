@@ -379,7 +379,7 @@ private fun ModernGalleryCard(save: SaveData, navController: NavController, cont
     Card(
         modifier = Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp))
             .onGloballyPositioned { cardRect = it.boundsInWindow() }
-            .clickable { GameLaunchRectHolder.rect = cardRect; navController.navigate(Screen.Game.create(save.id)) },
+            .clickable { GameLaunchRectHolder.rect = cardRect; GameLaunchRectHolder.preview = thumb; navController.navigate(Screen.Game.create(save.id)) },
         shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Column(Modifier.background(theme.surface)) {

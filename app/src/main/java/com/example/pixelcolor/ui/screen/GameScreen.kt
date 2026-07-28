@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,8 +28,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
@@ -55,11 +58,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 进入画布时用于承载「从缩略图位置放大到全屏」的启动动画来源矩形。
- * 画廊卡片在点击跳转前写入自身在窗口中的坐标，GameScreen 读取后立即清空，避免返回再次进入时重放。
+ * 进入画布时用于承载「从缩略图位置放大到全屏」的启动动画来源矩形与预览图。
+ * 画廊卡片在点击跳转前写入自身在窗口中的坐标与画作缩略图，GameScreen 读取后立即清空，避免返回再次进入时重放。
  */
 object GameLaunchRectHolder {
     var rect: Rect? = null
+    var preview: android.graphics.Bitmap? = null
 }
 
 @Composable
@@ -135,6 +139,7 @@ fun GameScreen(navController: NavController, saveId: String) {
     // 「启动应用」式入场动画：若从画廊缩略图点入，则从该缩略图位置矩形放大到全屏；否则轻微放大淡入。
     // 内容仅做 alpha 0->1 的透明到不透明淡入，避免反向缩放导致图层缓冲反复重分配而卡顿。
     val launchRect = remember { GameLaunchRectHolder.rect.also { GameLaunchRectHolder.rect = null } }
+    val launchPreview = remember { GameLaunchRectHolder.preview.also { GameLaunchRectHolder.preview = null } }
     var overlayRect by remember { mutableStateOf<Rect?>(null) }
     val hasLaunch = launchRect != null
     val progress = remember { Animatable(if (hasLaunch) 0f else 1f) }
@@ -167,10 +172,21 @@ fun GameScreen(navController: NavController, saveId: String) {
     ) {
         if (isLoading) {
             Box(Modifier.fillMaxSize().background(theme.bg).systemBarsPadding(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = theme.accent)
-                    Spacer(Modifier.height(16.dp))
-                    Text("加载中...", color = theme.muted, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
+                if (launchPreview != null) {
+                    // 加载阶段用画作缩略图占位，并随根容器的「从缩略图放大」变换一起缩放，
+                    // 让用户看到的就是这张预览图从画廊缩略图位置一路放大到全屏（而非只有转圈在放大）。
+                    Image(
+                        bitmap = launchPreview.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = theme.accent)
+                        Spacer(Modifier.height(16.dp))
+                        Text("加载中...", color = theme.muted, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
+                    }
                 }
             }
         } else {

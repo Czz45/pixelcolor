@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.pixelcolor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 91
-        versionName = "3.24"
+        versionCode = 92
+        versionName = "3.25"
     }
 
     signingConfigs {
