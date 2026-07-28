@@ -42,13 +42,13 @@ import java.io.File
 import java.util.UUID
 
 /**
- * ¡¸Ñ¡ÔñÍ¼Æ¬¡¹Ğü¸¡´°£¨¾ÓÖĞµ¯´°£©¡£
- * ¡¸Æô¶¯Ó¦ÓÃ¡¹Ê½¶¯»­£ºÕûÕÅ¡¸+¡¹¿¨Æ¬´ÓËüÔÚ»­ÀÈÀïµÄÕæÊµÎ»ÖÃ/´óĞ¡£¬¾ØĞÎĞÎ±ä·Å´ó³É¾ÓÖĞ´°¿Ú¡£
- *  - Íâ²ã£¨¿¨Æ¬¿ò£©£ºÓÉ¡¸+¡¹¿¨Æ¬¾ØĞÎ ¡ú Ãæ°å¾ØĞÎ×ö scale + translate£¬transformOrigin ÉèÎª×óÉÏ½Ç£»
- *  - ÄÚ²ã£¨ÄÚÈİ£©£ºµ¥¶À×ö alpha 0¡ú1 µ­Èë£¬²¢·´ÏòËõ·ÅµÖÏûÍâ²ãµÄ·Ç¾ùÔÈÀ­Éì£¬Òò´ËÄÚÈİ²»»û±ä¡¢Ö»ÊÇ´ÓÍ¸Ã÷µ½²»Í¸Ã÷¡£
- * ÔÚÏßÍ¼Ô´ÒÑÔÚÊ×Ò³¡¸ÔÚÏß¡¹±êÇ©Ìá¹©£¬¹Ê´Ë´¦½ö±¾µØÀ´Ô´£¨Ïà²á / ÅÄÕÕ£©¡£
+ * ã€Œé€‰æ‹©å›¾ç‰‡ã€æ‚¬æµ®çª—ï¼ˆå±…ä¸­å¼¹çª—ï¼‰ã€‚
+ * ã€Œå¯åŠ¨åº”ç”¨ã€å¼åŠ¨ç”»ï¼šæ•´å¼ ã€Œ+ã€å¡ç‰‡ä»å®ƒåœ¨ç”»å»Šé‡Œçš„çœŸå®ä½ç½®/å¤§å°ï¼ŒçŸ©å½¢å½¢å˜æ”¾å¤§æˆå±…ä¸­çª—å£ã€‚
+ *  - å¤–å±‚ï¼ˆå¡ç‰‡æ¡†ï¼‰ï¼šç”±ã€Œ+ã€å¡ç‰‡çŸ©å½¢ -> é¢æ¿çŸ©å½¢åš scale + translateï¼ŒtransformOrigin è®¾ä¸ºå·¦ä¸Šè§’ï¼›
+ *  - å†…å±‚ï¼ˆå†…å®¹ï¼‰ï¼šå•ç‹¬åš alpha 0->1 æ·¡å…¥ï¼Œå¹¶åå‘ç¼©æ”¾æŠµæ¶ˆå¤–å±‚çš„éå‡åŒ€æ‹‰ä¼¸ï¼Œå› æ­¤å†…å®¹ä¸ç•¸å˜ã€åªæ˜¯ä»é€æ˜åˆ°ä¸é€æ˜ã€‚
+ * åœ¨çº¿å›¾æºå·²åœ¨é¦–é¡µã€Œåœ¨çº¿ã€æ ‡ç­¾æä¾›ï¼Œæ•…æ­¤å¤„ä»…æœ¬åœ°æ¥æºï¼ˆç›¸å†Œ / æ‹ç…§ï¼‰ã€‚
  *
- * @param addButtonRect ¡¸+¡¹°´Å¥ÔÚ´°¿ÚÖĞµÄ×ø±ê£¬ÓÃÓÚÇı¶¯´Ó°´Å¥Éú³¤µ½ÖĞÑëµÄ¶¯»­¡£
+ * @param addButtonRect ã€Œ+ã€æŒ‰é’®åœ¨çª—å£ä¸­çš„åæ ‡ï¼Œç”¨äºé©±åŠ¨ä»æŒ‰é’®ç”Ÿé•¿åˆ°ä¸­å¤®çš„åŠ¨ç”»ã€‚
  */
 @Composable
 fun AddImageDialog(
@@ -67,7 +67,7 @@ fun AddImageDialog(
             try {
                 navController.navigate(Screen.PixelPreview.create(Uri.encode(it.toString())))
             } catch (e: Exception) {
-                Toast.makeText(context, "ÎŞ·¨´ò¿ªÍ¼Æ¬: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "æ— æ³•æ‰“å¼€å›¾ç‰‡: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -81,13 +81,12 @@ fun AddImageDialog(
             try {
                 navController.navigate(Screen.PixelPreview.create(Uri.encode(uri.toString())))
             } catch (e: Exception) {
-                Toast.makeText(context, "ÎŞ·¨´ò¿ªÕÕÆ¬: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "æ— æ³•æ‰“å¼€ç…§ç‰‡: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
         pendingCameraUri.value = null
     }
 
-    // ¡¸Æô¶¯Ó¦ÓÃ¡¹Ê½¶¯»­£º½ø¶È 0=ËõÔÚ°´Å¥´¦£¬1=¾ÓÖĞÆÌ¿ª
     var mounted by remember { mutableStateOf(show) }
     var overlayRect by remember { mutableStateOf<Rect?>(null) }
     val progress = remember { Animatable(if (show) 1f else 0f) }
@@ -103,7 +102,6 @@ fun AddImageDialog(
 
     if (mounted) {
         val p = progress.value
-        // ÕÚÕÖÊ¼ÖÕ¹ÒÔØÒÔÁ¿È¡×ÔÉí´°¿Ú×ø±ê£¨Ê×Ö¡¼´¿ÉÓÃ£¬±ÜÃâ»ØÍË¾ÓÖĞµÄÉÁÏÖ£©
         Box(
             Modifier
                 .fillMaxSize()
@@ -112,11 +110,9 @@ fun AddImageDialog(
                 .clickable { onDismiss() },
             contentAlignment = Alignment.Center
         ) {
-            // ½öµ±×ø±ê¾ÍĞ÷ºóÔÙ»æÖÆÃæ°å£¬±ÜÃâÊ×Ö¡»ØÍËµ½¾ÓÖĞÔì³ÉµÄÉÁÏÖ
             if (overlayRect != null && addButtonRect != null) {
                 val ov = overlayRect!!
                 val src = addButtonRect!!
-                // Ä¿±êÃæ°å¾ØĞÎ£ºÆÁÄ»¾ÓÖĞ£¬¿í 0.88¡¢¸ß 0.46£¨ÓëÏÂ·½ Card µÄ¹Ì¶¨±ÈÀıÒ»ÖÂ£©
                 val tw = ov.width * 0.88f
                 val th = ov.height * 0.46f
                 val tl = ov.left + (ov.width - tw) / 2f
@@ -143,7 +139,6 @@ fun AddImageDialog(
                     colors = CardDefaults.cardColors(containerColor = theme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
                 ) {
-                    // ÄÚÈİ£ºµ¥¶Àµ­Èë + ·´ÏòËõ·ÅµÖÏûÍâ²ãÀ­Éì ¡ú ²»±äĞÎ
                     Column(
                         Modifier
                             .graphicsLayer {
@@ -156,7 +151,7 @@ fun AddImageDialog(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            "Ñ¡ÔñÍ¼Æ¬",
+                            "é€‰æ‹©å›¾ç‰‡",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = theme.onBg,
@@ -165,21 +160,21 @@ fun AddImageDialog(
                         HorizontalDividerColor(theme)
                         AddOption(
                             icon = Icons.Filled.PhotoLibrary,
-                            title = "´ÓÏà²áÑ¡Ôñ",
-                            subtitle = "´Ó±¾µØÏà²áÌôÑ¡Ò»ÕÅÕÕÆ¬",
+                            title = "ä»ç›¸å†Œé€‰æ‹©",
+                            subtitle = "ä»æœ¬åœ°ç›¸å†ŒæŒ‘é€‰ä¸€å¼ ç…§ç‰‡",
                             theme = theme
                         ) {
                             onDismiss()
                             try {
                                 photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                             } catch (e: Exception) {
-                                Toast.makeText(context, "ÎŞ·¨´ò¿ªÏà²á: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "æ— æ³•æ‰“å¼€ç›¸å†Œ: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                         AddOption(
                             icon = Icons.Filled.PhotoCamera,
-                            title = "ÅÄÕÕ",
-                            subtitle = "ÓÃÏà»úÅÄÒ»ÕÅĞÂÕÕÆ¬",
+                            title = "æ‹ç…§",
+                            subtitle = "ç”¨ç›¸æœºæ‹ä¸€å¼ æ–°ç…§ç‰‡",
                             theme = theme
                         ) {
                             onDismiss()
@@ -191,7 +186,7 @@ fun AddImageDialog(
                                 pendingCameraUri.value = uri
                                 cameraLauncher.launch(uri)
                             } catch (e: Exception) {
-                                Toast.makeText(context, "ÎŞ·¨Æô¶¯Ïà»ú: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "æ— æ³•å¯åŠ¨ç›¸æœº: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
