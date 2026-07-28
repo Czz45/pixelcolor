@@ -374,7 +374,15 @@ fun PixelCanvasView(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .onSizeChanged { viewSize = it }
+                .onSizeChanged {
+                    viewSize = it
+                    val vw = it.width.toFloat(); val vh = it.height.toFloat()
+                    if (vw > 0 && vh > 0) {
+                        val aspect = canvas.width.toFloat() / canvas.height
+                        val (dw, dh) = if (vw / vh > aspect) Pair(vh * aspect, vh) else Pair(vw, vw / aspect)
+                        android.util.Log.d("LaunchAlign", "CANVAS viewSize=${vw.toInt()}x${vh.toInt()} aspect=$aspect paintingRect=${dw.toInt()}x${dh.toInt()}")
+                    }
+                }
                 .pointerInput(brushSize) {
                     val touchSlop = viewConfiguration.touchSlop
                     awaitEachGesture {

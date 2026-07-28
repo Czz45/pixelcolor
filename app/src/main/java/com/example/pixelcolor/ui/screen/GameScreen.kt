@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -64,6 +65,8 @@ import kotlinx.coroutines.withContext
 object GameLaunchRectHolder {
     var rect: Rect? = null
     var preview: android.graphics.Bitmap? = null
+    var gridW: Int = 0
+    var gridH: Int = 0
 }
 
 @Composable
@@ -140,6 +143,8 @@ fun GameScreen(navController: NavController, saveId: String) {
     // 内容仅做 alpha 0->1 的透明到不透明淡入，避免反向缩放导致图层缓冲反复重分配而卡顿。
     val launchRect = remember { GameLaunchRectHolder.rect.also { GameLaunchRectHolder.rect = null } }
     val launchPreview = remember { GameLaunchRectHolder.preview.also { GameLaunchRectHolder.preview = null } }
+    val launchGridW = remember { GameLaunchRectHolder.gridW.also { GameLaunchRectHolder.gridW = 0 } }
+    val launchGridH = remember { GameLaunchRectHolder.gridH.also { GameLaunchRectHolder.gridH = 0 } }
     var overlayRect by remember { mutableStateOf<Rect?>(null) }
     val hasLaunch = launchRect != null
     val progress = remember { Animatable(if (hasLaunch) 0f else 1f) }
@@ -172,8 +177,8 @@ fun GameScreen(navController: NavController, saveId: String) {
     ) {
         if (isLoading) {
             // 加载阶段复用与正式画布完全一致布局（同一 GameTopBar + 同尺寸画布区），
-            // 预览图用 ContentScale.Fit 在画布区居中，落点 = 真实画布里画作的位置。
-            LoadingPreviewContent(navController, launchPreview, true)
+            // 预览图按画布同一套 drawArea 算法 + 同一网格宽高比摆放，落点 = 真实画布里画作位置。
+            LoadingPreviewContent(navController, launchPreview, launchGridW, launchGridH, true)
         } else {
             val state = gameState
             if (state != null) {
@@ -356,7 +361,7 @@ fun GameScreen(navController: NavController, saveId: String) {
             }
             if (overlayAlpha > 0.001f) {
                 Box(Modifier.fillMaxSize().zIndex(20f).graphicsLayer { alpha = overlayAlpha }) {
-                    LoadingPreviewContent(navController, launchPreview, false)
+                    LoadingPreviewContent(navController, launchPreview, launchGridW, launchGridH, false)
                 }
             }
         }
@@ -388,13 +393,28 @@ private fun GameTopBar(
 }
 
 @Composable
-private fun LoadingPreviewContent(navController: NavController, launchPreview: android.graphics.Bitmap?, interactive: Boolean) {
+private fun LoadingPreviewContent(navController: NavController, launchPreview: android.graphics.Bitmap?, gridW: Int, gridH: Int, interactive: Boolean) {
     val theme = LocalAppTheme.current
     Column(Modifier.fillMaxSize().background(theme.bg)) {
         GameTopBar(navController, "填色中…", "", interactive)
-        Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
+            contentAlignment = Alignment.Center
+        ) {
             if (launchPreview != null) {
-                Image(bitmap = launchPreview.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val vw = maxWidth.value
+                    val vh = maxHeight.value
+                    // 与 PixelCanvasView.drawArea() 完全相同的算法 + 同一网格宽高比，
+                    // 保证预览图落点 = 真实画布里画作的位置（不受缓存缩略图宽高比影响）。
+                    val aspect = if (gridW > 0 && gridH > 0) gridW.toFloat() / gridH else launchPreview.width.toFloat() / launchPreview.height
+                    val drawWpx = if (vw / vh > aspect) vh * aspect else vw
+                    val drawHpx = if (vw / vh > aspect) vh else vw / aspect
+                    android.util.Log.d("LaunchAlign", "LOADING canvasArea=${vw.toInt()}x${vh.toInt()} gridAspect=$aspect previewRect=${drawWpx.toInt()}x${drawHpx.toInt()}")
+                    Box(Modifier.size(drawWpx.dp, drawHpx.dp)) {
+                        Image(bitmap = launchPreview.asImageBitmap(), contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
+                    }
+                }
             } else {
                 CircularProgressIndicator(color = theme.accent)
             }
