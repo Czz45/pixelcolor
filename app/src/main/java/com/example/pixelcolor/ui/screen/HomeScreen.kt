@@ -214,14 +214,14 @@ fun HomeScreen(navController: NavController) {
         containerColor = theme.bg
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            ModernTabRow(selectedTab, listOf("画廊", "精选"), { selectedTab = it }, theme, pagerState.currentPageOffsetFraction)
+            ModernTabRow(selectedTab, listOf("画廊", "在线"), { selectedTab = it }, theme, pagerState.currentPageOffsetFraction)
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
                     0 -> GalleryTab(navController, context, repo, theme)
-                    1 -> FeaturedTab(navController, scope)
+                    1 -> DiscoverTab(navController, scope)
                 }
             }
         }
@@ -324,7 +324,7 @@ private fun AddNewCard(theme: com.example.pixelcolor.ui.theme.AppThemeColors, on
                     Text("新建作品", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = theme.onBg, modifier = Modifier.weight(1f))
                     Text("→", fontSize = 14.sp, color = theme.accent, fontWeight = FontWeight.Bold)
                 }
-                Text("相册 / 拍照 / 在线", fontSize = 10.sp, color = theme.muted)
+                Text("相册 / 拍照", fontSize = 10.sp, color = theme.muted)
             }
         }
     }
