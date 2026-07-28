@@ -66,6 +66,7 @@ fun HomeScreen(navController: NavController) {
     val theme = LocalAppTheme.current
     var showThemePicker by remember { mutableStateOf(false) }
     var showAchievements by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
 
     if (showThemePicker) {
         AlertDialog(
@@ -213,17 +214,20 @@ fun HomeScreen(navController: NavController) {
         },
         containerColor = theme.bg
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            ModernTabRow(selectedTab, listOf("画廊", "在线"), { selectedTab = it }, theme, pagerState.currentPageOffsetFraction)
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                when (page) {
-                    0 -> GalleryTab(navController, context, repo, theme)
-                    1 -> DiscoverTab(navController, scope)
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            Column(Modifier.fillMaxSize()) {
+                ModernTabRow(selectedTab, listOf("画廊", "在线"), { selectedTab = it }, theme, pagerState.currentPageOffsetFraction)
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    when (page) {
+                        0 -> GalleryTab(navController, context, repo, theme, onAddImage = { showAddDialog = true })
+                        1 -> DiscoverTab(navController, scope)
+                    }
                 }
             }
+            AddImageDialog(showAddDialog, onDismiss = { showAddDialog = false }, navController)
         }
     }
 }
@@ -266,7 +270,7 @@ private fun ModernTabRow(selectedIndex: Int, tabs: List<String>, onTabSelected: 
 private val thumbCache = mutableMapOf<String, android.graphics.Bitmap>()
 
 @Composable
-private fun GalleryTab(navController: NavController, context: android.content.Context, repo: GameRepository, theme: com.example.pixelcolor.ui.theme.AppThemeColors) {
+private fun GalleryTab(navController: NavController, context: android.content.Context, repo: GameRepository, theme: com.example.pixelcolor.ui.theme.AppThemeColors, onAddImage: () -> Unit) {
     var refresh by remember { mutableIntStateOf(0) }
     val saves = remember(refresh) { repo.listSaves() }
     LaunchedEffect(Unit) { refresh++ }
@@ -281,7 +285,7 @@ private fun GalleryTab(navController: NavController, context: android.content.Co
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "__add_new__") {
-            AddNewCard(theme) { navController.navigate(Screen.Gallery.route) }
+            AddNewCard(theme) { onAddImage() }
         }
         if (sorted.isEmpty()) {
             item {

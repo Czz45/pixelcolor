@@ -2,7 +2,6 @@ package com.example.pixelcolor.navigation
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
-    object Gallery : Screen("gallery")
     object PixelPreview : Screen("pixel_preview/{imageUri}") {
         fun create(imageUri: String) = "pixel_preview/$imageUri"
     }

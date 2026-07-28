@@ -35,7 +35,6 @@ fun PixelNavGraph(navController: NavHostController = rememberNavController()) {
     Box(Modifier.fillMaxSize()) {
         NavHost(navController = navController, startDestination = Screen.Home.route) {
             composable(Screen.Home.route) { HomeScreen(navController = navController) }
-            composable(Screen.Gallery.route) { GalleryScreen(navController = navController) }
             composable(
                 Screen.PixelPreview.route,
                 arguments = listOf(navArgument("imageUri") { type = NavType.StringType })
