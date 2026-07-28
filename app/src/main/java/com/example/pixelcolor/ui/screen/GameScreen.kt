@@ -147,9 +147,10 @@ fun GameScreen(navController: NavController, saveId: String) {
     val launchGridW = remember { GameLaunchRectHolder.gridW.also { GameLaunchRectHolder.gridW = 0 } }
     val launchGridH = remember { GameLaunchRectHolder.gridH.also { GameLaunchRectHolder.gridH = 0 } }
     var overlayRect by remember { mutableStateOf<Rect?>(null) }
-    // 测量真实顶栏与底部 chrome 的高度，用于计算画作在画布里的精确矩形（落点对齐）。
+    // 真实画布视图（PixelCanvasView）在窗口中的实际矩形，直接用它的真实位置算画作落点，避免估算偏差。
+    var canvasRect by remember { mutableStateOf<Rect?>(null) }
+    // 测量真实顶栏高度，用于计算加载态预览图的起始（居中）位置。
     var topBarH by remember { mutableFloatStateOf(0f) }
-    var chromeH by remember { mutableFloatStateOf(0f) }
     val hasLaunch = launchRect != null
     val progress = remember { Animatable(if (hasLaunch) 0f else 1f) }
     LaunchedEffect(Unit) {
@@ -216,7 +217,7 @@ fun GameScreen(navController: NavController, saveId: String) {
                             onColorSelected = { vm.onColorSelected(it) },
                             jumpTarget = jumpTarget,
                             onJumpHandled = { vm.clearJumpTarget() },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize().onGloballyPositioned { canvasRect = it.boundsInWindow() }
                         )
 
                         // Area fill instruction tooltip
@@ -296,8 +297,7 @@ fun GameScreen(navController: NavController, saveId: String) {
                             navController.navigate(Screen.Completion.create(vm.saveId ?: "", preview = true))
                         },
                         onSortModeChanged = { mode, reversed -> vm.onColorSortModeChanged(mode, reversed) },
-                        onColorSelected = { vm.onColorSelected(it) },
-                        onMeasured = { chromeH = it }
+                        onColorSelected = { vm.onColorSelected(it) }
                     )
                 }
 
@@ -314,10 +314,21 @@ fun GameScreen(navController: NavController, saveId: String) {
             val aspect = if (launchGridW > 0 && launchGridH > 0) launchGridW.toFloat() / launchGridH
                          else launchPreview.width.toFloat() / launchPreview.height
             val realAspect = if (gameState?.canvas != null) gameState!!.canvas.width.toFloat() / gameState!!.canvas.height else aspect
-            // 起始矩形（root 本地坐标，px）：加载态预览图所在位置
+            // 起始矩形（root 本地坐标，px）：加载态预览图所在位置（屏幕−顶栏画布区居中）
             val startArea = computeDrawRect(0f, topBarH, rootW, rootH - topBarH, aspect)
-            // 目标矩形：真实画作所在位置（画布区减去底部 chrome）
-            val targetArea = computeDrawRect(0f, topBarH, rootW, (rootH - topBarH - chromeH).coerceAtLeast(1f), realAspect)
+            // 目标矩形：直接用真实画布视图（PixelCanvasView）在窗口中的实际矩形 + 同款 drawArea 算法算出画作位置，
+            // 再换算到 root 本地坐标。落点 = 真实画作，绝不偏差（不再靠顶栏/chrome 高度估算）。
+            val targetArea = if (canvasRect != null) {
+                val cr = canvasRect!!
+                val cw = cr.width
+                val ch = cr.height
+                val (pdw, pdh) = if (cw / ch > realAspect) Pair(ch * realAspect, ch) else Pair(cw, cw / realAspect)
+                val pdx = cr.left + (cw - pdw) / 2f
+                val pdy = cr.top + (ch - pdh) / 2f
+                Rect(pdx - root.left, pdy - root.top, pdx - root.left + pdw, pdy - root.top + pdh)
+            } else {
+                startArea
+            }
             val sx0 = startArea.left + startArea.width / 2f
             val sy0 = startArea.top + startArea.height / 2f
             val sx1 = targetArea.left + targetArea.width / 2f
@@ -325,9 +336,9 @@ fun GameScreen(navController: NavController, saveId: String) {
             val f = if (startArea.width > 0f) targetArea.width / startArea.width else 1f
             val settle = remember { Animatable(0f) }
             LaunchedEffect(Unit) {
-                // 先等一帧让底部 chrome 高度测量完成，避免起始帧跳变
+                // 等真实画布视图测量完成，拿到权威落点，避免起始帧跳变
                 delay(30)
-                settle.animateTo(1f, tween(360, easing = FastOutSlowInEasing))
+                settle.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
             }
             val p = settle.value
             Box(
@@ -454,11 +465,9 @@ private fun GameBottomChrome(
     onPreview: () -> Unit,
     onSortModeChanged: (Int, Boolean) -> Unit,
     onColorSelected: (Int) -> Unit,
-    animate: Boolean = true,
-    onMeasured: (Float) -> Unit = {}
+    animate: Boolean = true
 ) {
     val theme = LocalAppTheme.current
-    Column(Modifier.onGloballyPositioned { onMeasured(it.size.height.toFloat()) }) {
     // Floating toolbar (horizontal, above palette)
     Row(
         modifier = Modifier
@@ -529,7 +538,6 @@ private fun GameBottomChrome(
                 )
             }
         }
-    }
     }
 }
 
